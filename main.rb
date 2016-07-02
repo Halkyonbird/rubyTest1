@@ -1,3 +1,3 @@
 puts "Hello"
 puts "Bye"
-puts "After commit 1"
+puts "After commit 2"
