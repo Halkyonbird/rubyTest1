@@ -1,5 +1,5 @@
 puts "Hello"
 puts "After commit"
 puts "test TeamCity"
-puts "Slack!"
+puts "Slack it!"
 
