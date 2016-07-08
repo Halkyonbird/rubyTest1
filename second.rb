@@ -1,4 +1,4 @@
 puts 'second'
 puts 'end'
-puts
+puts ''ups
 if
