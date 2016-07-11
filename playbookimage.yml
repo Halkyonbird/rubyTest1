@@ -1,0 +1,182 @@
+---
+- hosts: all
+  sudo : true
+  vars:
+   hostname: "master"
+   ip: "127.0.0.0"
+   node_id: "server_master"
+   rabbitmq_user: "sensu"
+   rabbitmq_password: "Galactic1"
+   rabbitmq_host: "51.0.1.5"
+   sensu_name: "server_master"
+  
+  pre_tasks:
+
+    - name: check for file
+      stat: path=/usr/bin/ansible
+      register: file_exists  
+
+#    - name: swap
+#      vars:
+#        size: "4G"
+#        filename: "/swapfile"
+#      include: ../roles/swap/tasks/main.yml
+#      when: not file_exists.stat.exists
+        
+  
+  roles:
+   - { role: "roles/sensu-client-plugins" }
+   - { role: "roles/sensu-client" }
+
+     
+  tasks:
+
+    - include: common.yml
+
+    - name: install tracer
+      shell: gem install tracer
+    
+    - name: set hadoop type
+      shell: >
+        mkdir -p /etc/gex/nodeinfo &&
+        echo "vbox" > /etc/gex/nodeinfo/PLATFORM_TYPE &&        
+        echo {{hdp_type}} > /etc/gex/nodeinfo/HDP_TYPE         
+      when: not file_exists.stat.exists
+
+    - name: set hadoop type 
+      shell: >
+        mkdir -p /etc/gex/nodeinfo &&
+        echo "bare_metal" > /etc/gex/nodeinfo/PLATFORM_TYPE &&
+        echo {{hdp_type}} > /etc/gex/nodeinfo/HDP_TYPE
+      when: file_exists.stat.exists               
+    
+    - name: copy sensu client
+      copy: src=roles/sensu-client dest=/home/vagrant/
+      when: file_exists.stat.exists 
+      
+    - name: copy sensu client plugins
+      copy: src=roles/sensu-client-plugins dest=/home/vagrant/
+      when: file_exists.stat.exists
+      
+    - name: copy sensu client
+      copy: src=roles/sensu-client dest=/home/vagrant/
+      when: not file_exists.stat.exists 
+      
+    - name: copy sensu client plugins
+      copy: src=roles/sensu-client-plugins dest=/home/vagrant/
+      when: not file_exists.stat.exists 
+      
+
+    - name: mkdir gex
+      shell: mkdir /gex 
+      ignore_errors: yes
+      shell: chmod 777 /gex
+      ignore_errors: yes      
+      shell: bash -c "echo '/gex *(rw,sync)' >> /etc/exports"    
+      shell: /usr/sbin/exportfs -a
+      
+    - name: add vagrant to docker group
+      shell: sudo usermod -aG docker vagrant           
+                                  
+    - name: install runslavedocker
+      copy: src=common/runslavedocker.bash dest=/usr/local/bin/runslavedocker.bash
+
+
+    - name: fix permissions
+      shell: sudo chmod +x /usr/local/bin/runslavedocker.bash      
+    - name: install pipework
+      copy: src=common/pipework dest=/usr/local/bin/pipework
+    - name: fix permissions
+      shell: sudo chmod +x /usr/local/bin/pipework      
+      
+    - name: install slave service files service file
+      copy: src=slaveservices/ dest=/etc/systemd/system    
+      
+    - name: make openvpn config dir  
+      shell: mkdir /etc/openvpn/config | true
+      ignore_errors: yes
+      when: not file_exists.stat.exists
+      
+    - name: install openpvn client files
+      copy: src=openvpn/ dest=/etc/openvpn/config    
+
+    - name: update
+      shell: apt-get update
+    
+    - name: install aws sdk ruby
+      shell: gem install aws-sdk    
+      
+    - name: install ntp
+      shell: apt-get install -y ntp         
+
+
+    - name: check for file2
+      stat: path=/home/vagrant/base
+      register: base_exists
+
+    
+    - name: fix file limits
+      shell: >
+        echo "hdfs  -       nofile  32768" >> /etc/security/limits.conf &&
+        echo "hdfs  -       nproc   2048" >> /etc/security/limits.conf &&
+        echo "hbase -       nofile  32768" >> /etc/security/limits.conf &&
+        echo "hbase -       nproc   2048" >> /etc/security/limits.conf &&
+        echo "session required  pam_limits.so" >> /etc/pam.d/common-session  
+    
+    
+    - name: import to master
+      shell: >
+        docker import /vagrant/docker/hue_plain.tar gex/hue_plain &&         
+        docker import /vagrant/docker/hadoop_plain.tar gex/hadoop_plain  &&   
+        docker import /vagrant/docker/hue_cdh.tar gex/hue_cdh &&         
+        docker import /vagrant/docker/hadoop_cdh.tar gex/hadoop_cdh        
+      when: not file_exists.stat.exists and hdp_type == 'master'  
+
+      
+    - name: import 
+      shell: >
+        docker import /vagrant/docker/hue_{{hdp_type}}.tar gex/hue_{{hdp_type |lower}} &&         
+        docker import /vagrant/docker/hadoop_{{hdp_type}}.tar gex/hadoop_{{hdp_type |lower}} 
+      when: not file_exists.stat.exists and not hdp_type == 'master'
+      
+      
+
+    - name: import (dir exists)
+      shell: > 
+        docker import /home/vagrant/docker/hue_plain.tar gex/hue_plain &&         
+        docker import /home/vagrant/docker/hadoop_plain.tar gex/hadoop_plain
+        #docker import /home/vagrant/docker/hue_cdh.tar gex/hue_cdh &&         
+        #docker import /home/vagrant/docker/hadoop_cdh.tar gex/hadoop_cdh             
+      when: file_exists.stat.exists
+      
+    - name: remove xwindows
+      shell: apt-get purge -y --force-yes libx11.* libqt.*
+      when: not file_exists.stat.exists
+    - name: remove juju
+      shell: apt-get purge -y --force-yes  juju-core
+      when: not file_exists.stat.exists
+
+    - name: clean
+      shell: >
+        rm -rf  /home/vagrant/apptemplates/hadoop/*/;
+        rm -rf  /home/vagrant/apptemplates/hue/*/;
+        rm -rf /home/vagrant/mesos;        
+        apt-get purge  -y 'linux-headers*' 	libllvm3.6v5 aptitude libgl1-mesa-dri puppet-common virtualbox-guest-dkms git git-man lxc libnss3 open-vm-tools fontconfig   linux-image-extra-4.2.0-38-generic 	linux-image-extra-4.2.0-34-generic 
+        #find /var/lib/apt -type f | xargs rm -f;
+        rm -r /var/cache/apt /var/lib/apt/lists;
+        rm -r /var/crash/*;
+        # Remove APT cache
+        apt-get -y autoremove ;
+        apt-get -y clean;
+        apt-get autoclean -y
+        dd if=/dev/zero of=/EMPTY bs=1M;
+        rm -f /EMPTY;
+        rm -rf /tmp/*;
+        sync;
+      when: not file_exists.stat.exists
+    
+    
+                        
+      
+      
+      
