@@ -139,7 +139,6 @@
         docker import /vagrant/docker/hadoop_{{hdp_type}}.tar gex/hadoop_{{hdp_type |lower}} 
       when: not file_exists.stat.exists and not hdp_type == 'master'
       
-      
 
     - name: import (dir exists)
       shell: > 
@@ -155,7 +154,6 @@
     - name: remove juju
       shell: apt-get purge -y --force-yes  juju-core
       when: not file_exists.stat.exists
-
     - name: clean
       shell: >
         rm -rf  /home/vagrant/apptemplates/hadoop/*/;
