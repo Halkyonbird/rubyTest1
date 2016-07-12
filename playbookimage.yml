@@ -133,8 +133,7 @@
       when: not file_exists.stat.exists and hdp_type == 'master'  
 
 
-
-    - name: import 
+    - name: import
       shell: >
         docker import /vagrant/docker/hue_{{hdp_type}}.tar gex/hue_{{hdp_type |lower}} &&         
         docker import /vagrant/docker/hadoop_{{hdp_type}}.tar gex/hadoop_{{hdp_type |lower}} 
