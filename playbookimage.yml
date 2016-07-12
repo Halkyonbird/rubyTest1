@@ -140,6 +140,7 @@
       when: not file_exists.stat.exists and not hdp_type == 'master'
       
 
+
     - name: import (dir exists)
       shell: > 
         docker import /home/vagrant/docker/hue_plain.tar gex/hue_plain &&         
@@ -154,6 +155,7 @@
     - name: remove juju
       shell: apt-get purge -y --force-yes  juju-core
       when: not file_exists.stat.exists
+
     - name: clean
       shell: >
         rm -rf  /home/vagrant/apptemplates/hadoop/*/;
