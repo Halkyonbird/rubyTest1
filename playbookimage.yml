@@ -132,7 +132,8 @@
         docker import /vagrant/docker/hadoop_cdh.tar gex/hadoop_cdh        
       when: not file_exists.stat.exists and hdp_type == 'master'  
 
-      
+
+
     - name: import 
       shell: >
         docker import /vagrant/docker/hue_{{hdp_type}}.tar gex/hue_{{hdp_type |lower}} &&         
