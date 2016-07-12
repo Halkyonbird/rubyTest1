@@ -1,5 +1,1 @@
-<?xml version="1.0" encoding="WINDOWS-1251"?>
-<tutorial>
-  <title>"������� �� XSL"</title>
-  <author>������ ����� ����������<author>
-</tutorial>
+line 3 column 1 - Error: <htmlw> is not recognized!
